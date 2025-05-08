@@ -1,0 +1,75 @@
+# Ben Payne
+# Physics Derivation Graph
+# https://allofphysics.com
+
+# Creative Commons Attribution 4.0 International License
+# https://creativecommons.org/licenses/by/4.0/
+
+# https://docs.docker.com/compose/compose-file/
+
+services:
+  flask-webserver:
+    build:
+      context: ./webserver_for_pdg
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    # https://stackoverflow.com/questions/29377853/how-can-i-use-environment-variables-in-docker-compose
+    # https://docs.docker.com/compose/how-tos/environment-variables/set-environment-variables/
+    expose:
+      - 5000
+    # using "ports" makes flask/gunicorn accessible without going through nginx
+    # ports:
+    #  - "5000:5000"
+    # https://docs.gunicorn.org/en/stable/settings.html
+    # https://pythonspeed.com/articles/gunicorn-in-docker/
+    # -reload : watch for file changes inside the container at its working directory.
+    command: >
+      gunicorn
+      --chdir /code
+      --reload
+      --bind 0.0.0.0:5000
+      --forwarded-allow-ips="*"
+      --log-level debug
+      --log-file=/code/logs_gunicorn/gunicorn_logs.log
+      --access-logfile=/code/logs_gunicorn/gunicorn_access.log
+      --error-logfile=/code/logs_gunicorn/gunicorn_error.log
+      --capture-output
+      --worker-tmp-dir /dev/shm
+      --workers=2 
+      --threads=4 
+      --worker-class=gthread
+      pdg_app:web_app 
+#      --enable-stdio-inheritance
+    networks:
+      this-internal:
+    volumes:
+      - ${PWD}/:/scratch
+      - ./logs_gunicorn:/code/logs_gunicorn
+#    healthcheck:
+#      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+#      interval: 10s
+#      timeout: 5s
+#      retries: 3
+
+  nginx:
+    build: ./nginx_for_pdg
+    # https://docs.docker.com/reference/compose-file/services/#depends_on
+    depends_on: 
+      flask-webserver:
+        condition: service_started
+#        condition: service_healthy
+    restart: on-failure
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ${PWD}/logs_nginx/:/logs/
+      - ${PWD}/certs/:/certs/
+    networks:
+      this-internal:
+
+networks:
+  this-internal:
+    driver: bridge
+
+# EOF

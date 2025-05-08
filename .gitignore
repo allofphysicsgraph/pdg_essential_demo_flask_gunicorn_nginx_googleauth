@@ -1,0 +1,3 @@
+logs_gunicorn/*
+logs_nginx/*
+certs/*
