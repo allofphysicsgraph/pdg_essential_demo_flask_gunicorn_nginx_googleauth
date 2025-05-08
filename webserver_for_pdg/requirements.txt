@@ -1,2 +1,10 @@
 flask
 gunicorn
+
+# for google auth
+requests
+oauthlib
+pyOpenSSL
+Flask-Login
+
+# EOF
